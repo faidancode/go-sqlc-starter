@@ -24,25 +24,73 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.createCategoryStmt, err = db.PrepareContext(ctx, createCategory); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateCategory: %w", err)
+	}
 	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
 	}
+	if q.getCategoryByIDStmt, err = db.PrepareContext(ctx, getCategoryByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCategoryByID: %w", err)
+	}
 	if q.getUserByEmailStmt, err = db.PrepareContext(ctx, getUserByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByEmail: %w", err)
+	}
+	if q.listCategoriesStmt, err = db.PrepareContext(ctx, listCategories); err != nil {
+		return nil, fmt.Errorf("error preparing query ListCategories: %w", err)
+	}
+	if q.restoreCategoryStmt, err = db.PrepareContext(ctx, restoreCategory); err != nil {
+		return nil, fmt.Errorf("error preparing query RestoreCategory: %w", err)
+	}
+	if q.softDeleteCategoryStmt, err = db.PrepareContext(ctx, softDeleteCategory); err != nil {
+		return nil, fmt.Errorf("error preparing query SoftDeleteCategory: %w", err)
+	}
+	if q.updateCategoryStmt, err = db.PrepareContext(ctx, updateCategory); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateCategory: %w", err)
 	}
 	return &q, nil
 }
 
 func (q *Queries) Close() error {
 	var err error
+	if q.createCategoryStmt != nil {
+		if cerr := q.createCategoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createCategoryStmt: %w", cerr)
+		}
+	}
 	if q.createUserStmt != nil {
 		if cerr := q.createUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createUserStmt: %w", cerr)
 		}
 	}
+	if q.getCategoryByIDStmt != nil {
+		if cerr := q.getCategoryByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCategoryByIDStmt: %w", cerr)
+		}
+	}
 	if q.getUserByEmailStmt != nil {
 		if cerr := q.getUserByEmailStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserByEmailStmt: %w", cerr)
+		}
+	}
+	if q.listCategoriesStmt != nil {
+		if cerr := q.listCategoriesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listCategoriesStmt: %w", cerr)
+		}
+	}
+	if q.restoreCategoryStmt != nil {
+		if cerr := q.restoreCategoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing restoreCategoryStmt: %w", cerr)
+		}
+	}
+	if q.softDeleteCategoryStmt != nil {
+		if cerr := q.softDeleteCategoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing softDeleteCategoryStmt: %w", cerr)
+		}
+	}
+	if q.updateCategoryStmt != nil {
+		if cerr := q.updateCategoryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateCategoryStmt: %w", cerr)
 		}
 	}
 	return err
@@ -82,17 +130,29 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                 DBTX
-	tx                 *sql.Tx
-	createUserStmt     *sql.Stmt
-	getUserByEmailStmt *sql.Stmt
+	db                     DBTX
+	tx                     *sql.Tx
+	createCategoryStmt     *sql.Stmt
+	createUserStmt         *sql.Stmt
+	getCategoryByIDStmt    *sql.Stmt
+	getUserByEmailStmt     *sql.Stmt
+	listCategoriesStmt     *sql.Stmt
+	restoreCategoryStmt    *sql.Stmt
+	softDeleteCategoryStmt *sql.Stmt
+	updateCategoryStmt     *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                 tx,
-		tx:                 tx,
-		createUserStmt:     q.createUserStmt,
-		getUserByEmailStmt: q.getUserByEmailStmt,
+		db:                     tx,
+		tx:                     tx,
+		createCategoryStmt:     q.createCategoryStmt,
+		createUserStmt:         q.createUserStmt,
+		getCategoryByIDStmt:    q.getCategoryByIDStmt,
+		getUserByEmailStmt:     q.getUserByEmailStmt,
+		listCategoriesStmt:     q.listCategoriesStmt,
+		restoreCategoryStmt:    q.restoreCategoryStmt,
+		softDeleteCategoryStmt: q.softDeleteCategoryStmt,
+		updateCategoryStmt:     q.updateCategoryStmt,
 	}
 }
