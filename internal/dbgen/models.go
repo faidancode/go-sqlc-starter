@@ -23,10 +23,27 @@ type Category struct {
 	DeletedAt   sql.NullTime   `json:"deleted_at"`
 }
 
+type Product struct {
+	ID          uuid.UUID      `json:"id"`
+	CategoryID  uuid.UUID      `json:"category_id"`
+	Name        string         `json:"name"`
+	Slug        string         `json:"slug"`
+	Description sql.NullString `json:"description"`
+	Price       string         `json:"price"`
+	Stock       int32          `json:"stock"`
+	Sku         sql.NullString `json:"sku"`
+	ImageUrl    sql.NullString `json:"image_url"`
+	IsActive    sql.NullBool   `json:"is_active"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   sql.NullTime   `json:"deleted_at"`
+}
+
 type User struct {
 	ID        uuid.UUID      `json:"id"`
 	Email     string         `json:"email"`
-	Name      string         `json:"name"`
+	FirstName string         `json:"first_name"`
+	LastName  string         `json:"last_name"`
 	Password  string         `json:"password"`
 	Role      sql.NullString `json:"role"`
 	CreatedAt time.Time      `json:"created_at"`

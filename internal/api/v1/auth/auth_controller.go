@@ -8,49 +8,30 @@ import (
 )
 
 type Controller struct {
-	service *Service
+	service Service // Perbaikan: Gunakan Interface, bukan pointer ke Interface
 }
 
-func NewController(s *Service) *Controller {
+func NewController(s Service) *Controller {
 	return &Controller{service: s}
 }
 
 func (ctrl *Controller) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Response Error Seragam
 		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", "Input tidak valid", err.Error())
 		return
 	}
 
 	token, userResp, err := ctrl.service.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
-		// Response Error Seragam
 		response.Error(c, http.StatusUnauthorized, "AUTH_FAILED", "Email atau password salah", nil)
 		return
 	}
 
-	// Set Cookie
-	c.SetCookie(
-		"access_token",
-		token,
-		86400,
-		"/",
-		"",
-		false,
-		true,
-	)
+	// Cookie configuration
+	c.SetCookie("access_token", token, 86400, "/", "", false, true)
 
-	// Response Success Seragam
-	// Data yang dikirim adalah struct AuthResponse (Email & Role)
 	response.Success(c, http.StatusOK, userResp, nil)
-}
-
-func (ctrl *Controller) Logout(c *gin.Context) {
-	c.SetCookie("access_token", "", -1, "/", "", false, true)
-
-	// Response Success Seragam
-	response.Success(c, http.StatusOK, "Logout berhasil", nil)
 }
 
 func (ctrl *Controller) Register(c *gin.Context) {
@@ -67,4 +48,9 @@ func (ctrl *Controller) Register(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusCreated, res, nil)
+}
+
+func (ctrl *Controller) Logout(c *gin.Context) {
+	c.SetCookie("access_token", "", -1, "/", "", false, true)
+	response.Success(c, http.StatusOK, "Logout berhasil", nil)
 }

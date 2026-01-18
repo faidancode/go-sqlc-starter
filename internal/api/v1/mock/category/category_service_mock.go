@@ -6,7 +6,7 @@ package mock
 
 import (
 	context "context"
-	category "go-sqlc-starter/internal/category"
+	category "go-sqlc-starter/internal/api/v1/category"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"

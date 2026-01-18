@@ -3,12 +3,15 @@ package auth
 import (
 	"context"
 	"go-sqlc-starter/internal/dbgen"
+
+	"github.com/google/uuid"
 )
 
-//go:generate mockgen -source=auth_repo.go -destination=mock/auth_repo_mock.go -package=mock
+//go:generate mockgen -source=auth_repo.go -destination=../mock/auth/auth_repo_mock.go -package=mock
 type Repository interface {
 	Create(ctx context.Context, params dbgen.CreateUserParams) (dbgen.CreateUserRow, error)
 	GetByEmail(ctx context.Context, email string) (dbgen.GetUserByEmailRow, error)
+	GetByID(ctx context.Context, id uuid.UUID) (dbgen.User, error)
 }
 
 type repository struct {
@@ -21,6 +24,10 @@ func NewRepository(q *dbgen.Queries) Repository {
 
 func (r *repository) GetByEmail(ctx context.Context, email string) (dbgen.GetUserByEmailRow, error) {
 	return r.queries.GetUserByEmail(ctx, email)
+}
+
+func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (dbgen.User, error) {
+	return r.queries.GetUserByID(ctx, id) // Asumsi nama query di sqlc Anda
 }
 
 func (r *repository) Create(ctx context.Context, params dbgen.CreateUserParams) (dbgen.CreateUserRow, error) {

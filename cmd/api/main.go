@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"go-sqlc-starter/internal/auth"
+	"go-sqlc-starter/internal/api/v1/auth"
+	"go-sqlc-starter/internal/api/v1/category"
+	"go-sqlc-starter/internal/api/v1/product"
 	"go-sqlc-starter/internal/dbgen"
 	"log"
 	"os"
@@ -19,7 +21,7 @@ func main() {
 	}
 
 	// 2. Database Connection
-	db, err := sql.Open("postgres", os.Getenv("DB"))
+	db, err := sql.Open("postgres", os.Getenv("DB_URL"))
 	if err != nil {
 		log.Fatal("Cannot connect to database:", err)
 	}
@@ -34,10 +36,18 @@ func main() {
 	authService := auth.NewService(authRepo)
 	authController := auth.NewController(authService)
 
+	categoryRepo := category.NewRepository(queries)
+	categoryService := category.NewService(categoryRepo)
+	categoryController := category.NewController(categoryService)
+
+	productRepo := product.NewRepository(queries)
+	productService := product.NewService(productRepo, categoryRepo)
+	productController := product.NewController(productService)
+
 	registry := ControllerRegistry{
-		Auth: authController,
-		// Category: catController,
-		// Product:  prodController,
+		Auth:     authController,
+		Category: categoryController,
+		Product:  productController,
 	}
 
 	// 4. Jalankan Router

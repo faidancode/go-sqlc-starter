@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"go-sqlc-starter/internal/category"
+	"go-sqlc-starter/internal/api/v1/category"
+	categoryMock "go-sqlc-starter/internal/api/v1/mock/category"
 	"go-sqlc-starter/internal/dbgen"
-	categoryMock "go-sqlc-starter/internal/mock/category"
 	"testing"
 	"time"
 

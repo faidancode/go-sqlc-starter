@@ -3,6 +3,7 @@ package category
 import (
 	"go-sqlc-starter/internal/pkg/apperror"
 	"go-sqlc-starter/internal/pkg/response"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -23,6 +24,7 @@ func (ctrl *Controller) GetAll(c *gin.Context) {
 
 	data, total, err := ctrl.service.GetAll(c.Request.Context(), page, limit)
 	if err != nil {
+		log.Printf("[Category GetAll Error]: %v", err)
 		handleError(c, err)
 		return
 	}
@@ -112,4 +114,5 @@ func handleError(c *gin.Context, err error) {
 		httpErr.Message,
 		nil,
 	)
+	log.Println(err)
 }
