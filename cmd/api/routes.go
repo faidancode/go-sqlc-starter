@@ -2,6 +2,7 @@ package main
 
 import (
 	"go-sqlc-starter/internal/api/v1/auth"
+	"go-sqlc-starter/internal/api/v1/cart"
 	"go-sqlc-starter/internal/api/v1/category"
 	"go-sqlc-starter/internal/api/v1/product"
 	"go-sqlc-starter/internal/middleware"
@@ -13,7 +14,7 @@ type ControllerRegistry struct {
 	Auth     *auth.Controller
 	Category *category.Controller
 	Product  *product.Controller
-	// Cart     *cart.Controller
+	Cart     *cart.Controller
 	// Order    *order.Controller
 }
 
@@ -64,6 +65,24 @@ func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
 				adminProd.DELETE("/:id", reg.Product.Delete)
 				adminProd.PATCH("/:id/restore", reg.Product.Restore)
 			}
+		}
+
+		cart := v1.Group("/cart")
+		cart.Use(middleware.AuthMiddleware())
+		{
+			cart.POST("", reg.Cart.Create)
+			cart.GET("", reg.Cart.Detail)
+			cart.GET("/count", reg.Cart.Count)
+			cart.DELETE("", reg.Cart.Delete)
+		}
+
+		cartItems := v1.Group("/cart-items")
+		cartItems.Use(middleware.AuthMiddleware())
+		{
+			cartItems.PUT("/:id", reg.Cart.UpdateQty)
+			cartItems.POST("/:id/increment", reg.Cart.Increment)
+			cartItems.POST("/:id/decrement", reg.Cart.Decrement)
+			cartItems.DELETE("/:id", reg.Cart.DeleteItem)
 		}
 
 	}
