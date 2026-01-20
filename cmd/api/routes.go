@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go-sqlc-starter/internal/api/v1/address"
 	"go-sqlc-starter/internal/api/v1/auth"
 	"go-sqlc-starter/internal/api/v1/cart"
 	"go-sqlc-starter/internal/api/v1/category"
@@ -15,6 +16,7 @@ type ControllerRegistry struct {
 	Category *category.Controller
 	Product  *product.Controller
 	Cart     *cart.Controller
+	Address  *address.Controller
 	// Order    *order.Controller
 }
 
@@ -48,23 +50,21 @@ func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
 			}
 		}
 
-		// Product Routes
 		prod := v1.Group("/products")
 		{
 			prod.GET("", reg.Product.GetPublicList)
 			prod.GET("/:id", reg.Product.GetByID)
+		}
 
-			// Protected Admin Routes
-			adminProd := prod.Group("/admin")
-			adminProd.Use(middleware.AuthMiddleware())
-			adminProd.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
-			{
-				adminProd.GET("", reg.Product.GetAdminList)
-				adminProd.POST("", reg.Product.Create)
-				adminProd.PUT("/:id", reg.Product.Update)
-				adminProd.DELETE("/:id", reg.Product.Delete)
-				adminProd.PATCH("/:id/restore", reg.Product.Restore)
-			}
+		adminProduct := v1.Group("/admin/products")
+		adminProduct.Use(middleware.AuthMiddleware())
+		adminProduct.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
+		{
+			adminProduct.GET("", reg.Product.GetAdminList)
+			adminProduct.POST("", reg.Product.Create)
+			adminProduct.PUT("/:id", reg.Product.Update)
+			adminProduct.DELETE("/:id", reg.Product.Delete)
+			adminProduct.PATCH("/:id/restore", reg.Product.Restore)
 		}
 
 		cart := v1.Group("/cart")
@@ -83,6 +83,22 @@ func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
 			cartItems.POST("/:id/increment", reg.Cart.Increment)
 			cartItems.POST("/:id/decrement", reg.Cart.Decrement)
 			cartItems.DELETE("/:id", reg.Cart.DeleteItem)
+		}
+
+		address := v1.Group("/address")
+		address.Use(middleware.AuthMiddleware())
+		{
+			address.GET("/:user_id", reg.Address.List)
+			address.POST("", reg.Address.Create)
+			address.PUT("/:id", reg.Address.Update)
+			address.DELETE("", reg.Address.Delete)
+		}
+
+		adminAddress := v1.Group("/admin/address")
+		adminAddress.Use(middleware.AuthMiddleware())
+		adminAddress.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
+		{
+			adminAddress.GET("", reg.Address.ListAdmin)
 		}
 
 	}
