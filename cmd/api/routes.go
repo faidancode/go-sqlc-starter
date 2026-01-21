@@ -5,6 +5,7 @@ import (
 	"go-sqlc-starter/internal/api/v1/auth"
 	"go-sqlc-starter/internal/api/v1/cart"
 	"go-sqlc-starter/internal/api/v1/category"
+	"go-sqlc-starter/internal/api/v1/order"
 	"go-sqlc-starter/internal/api/v1/product"
 	"go-sqlc-starter/internal/middleware"
 
@@ -17,7 +18,7 @@ type ControllerRegistry struct {
 	Product  *product.Controller
 	Cart     *cart.Controller
 	Address  *address.Controller
-	// Order    *order.Controller
+	Order    *order.Controller
 }
 
 func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
@@ -33,38 +34,38 @@ func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
 			auth.POST("/register", reg.Auth.Register)
 		}
 
-		cat := v1.Group("/categories")
+		categories := v1.Group("/categories")
 		{
-			cat.GET("", reg.Category.GetAll)
-			cat.GET("/:id", reg.Category.GetByID)
-
-			// Protected Admin Routes
-			adminCat := cat.Group("")
-			adminCat.Use(middleware.AuthMiddleware())
-			adminCat.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
-			{
-				adminCat.POST("", reg.Category.Create)
-				adminCat.PUT("/:id", reg.Category.Update)
-				adminCat.DELETE("/:id", reg.Category.Delete)
-				adminCat.PATCH("/:id/restore", reg.Category.Restore)
-			}
+			categories.GET("", reg.Category.ListPublic)
+			categories.GET("/:id", reg.Category.GetByID)
 		}
 
-		prod := v1.Group("/products")
+		adminCategories := categories.Group("/admin/categories")
+		adminCategories.Use(middleware.AuthMiddleware())
+		adminCategories.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
 		{
-			prod.GET("", reg.Product.GetPublicList)
-			prod.GET("/:id", reg.Product.GetByID)
+			adminCategories.GET("", reg.Category.ListAdmin)
+			adminCategories.POST("", reg.Category.Create)
+			adminCategories.PUT("/:id", reg.Category.Update)
+			adminCategories.DELETE("/:id", reg.Category.Delete)
+			adminCategories.PATCH("/:id/restore", reg.Category.Restore)
 		}
 
-		adminProduct := v1.Group("/admin/products")
-		adminProduct.Use(middleware.AuthMiddleware())
-		adminProduct.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
+		products := v1.Group("/products")
 		{
-			adminProduct.GET("", reg.Product.GetAdminList)
-			adminProduct.POST("", reg.Product.Create)
-			adminProduct.PUT("/:id", reg.Product.Update)
-			adminProduct.DELETE("/:id", reg.Product.Delete)
-			adminProduct.PATCH("/:id/restore", reg.Product.Restore)
+			products.GET("", reg.Product.GetPublicList)
+			products.GET("/:id", reg.Product.GetByID)
+		}
+
+		adminProducts := v1.Group("/admin/products")
+		adminProducts.Use(middleware.AuthMiddleware())
+		adminProducts.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
+		{
+			adminProducts.GET("", reg.Product.GetAdminList)
+			adminProducts.POST("", reg.Product.Create)
+			adminProducts.PUT("/:id", reg.Product.Update)
+			adminProducts.DELETE("/:id", reg.Product.Delete)
+			adminProducts.PATCH("/:id/restore", reg.Product.Restore)
 		}
 
 		cart := v1.Group("/cart")
@@ -99,6 +100,28 @@ func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
 		adminAddress.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
 		{
 			adminAddress.GET("", reg.Address.ListAdmin)
+		}
+
+		// ========================
+		// ORDER
+		// ========================
+		orders := v1.Group("/orders")
+		orders.Use(middleware.AuthMiddleware()) // Semua route order butuh login
+		{
+			// Customer Routes
+			orders.POST("/checkout", reg.Order.Checkout)
+			orders.GET("", reg.Order.List)
+			orders.GET("/:id", reg.Order.Detail)
+			orders.PATCH("/:id/cancel", reg.Order.Cancel)
+			orders.PATCH("/:id/status", reg.Order.UpdateStatusByCustomer)
+
+			// Admin Routes (Management)
+			adminOrders := orders.Group("/admin")
+			adminOrders.Use(middleware.RoleMiddleware("ADMIN", "SUPERADMIN"))
+			{
+				adminOrders.GET("", reg.Order.ListAdmin)
+				adminOrders.PATCH("/:id/status", reg.Order.UpdateStatusByAdmin)
+			}
 		}
 
 	}
