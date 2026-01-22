@@ -13,8 +13,9 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
+	ID        string `json:"id"`
 	Email     string `json:"email"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	FirstName string `json:"firsName"`
+	LastName  string `json:"lastName"`
 	Role      string `json:"role"`
 }

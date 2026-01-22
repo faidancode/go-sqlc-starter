@@ -1,9 +1,8 @@
 package auth
 
 import (
-	"net/http"
-
 	"go-sqlc-starter/internal/pkg/apperror"
+	"net/http"
 )
 
 var (
@@ -35,5 +34,30 @@ var (
 		apperror.CodeNotFound,
 		"User not found",
 		http.StatusNotFound,
+	)
+
+	ErrRefreshTokenRequired = apperror.New(
+		apperror.CodeUnauthorized,
+		"Refresh token is required",
+		http.StatusUnauthorized,
+	)
+
+	ErrInvalidRefreshToken = apperror.New(
+		apperror.CodeUnauthorized,
+		"Invalid or expired refresh token",
+		http.StatusUnauthorized,
+	)
+
+	ErrSessionExpired = apperror.New(
+		apperror.CodeUnauthorized,
+		"Your session has expired, please login again",
+		http.StatusUnauthorized,
+	)
+
+	// Error terkait Client Type
+	ErrUnsupportedClient = apperror.New(
+		apperror.CodeInvalidInput,
+		"Unsupported client platform",
+		http.StatusBadRequest,
 	)
 )

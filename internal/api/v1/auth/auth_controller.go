@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"go-sqlc-starter/internal/pkg/platform"
 	"go-sqlc-starter/internal/pkg/response"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,20 +20,51 @@ func NewController(s Service) *Controller {
 func (ctrl *Controller) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		// Response Error Seragam
 		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", "Input tidak valid", err.Error())
 		return
 	}
 
-	token, userResp, err := ctrl.service.Login(c.Request.Context(), req.Email, req.Password)
+	clientHeader := c.GetHeader("X-Client-Type")
+	userAgent := c.GetHeader("User-Agent")
+	clientType := platform.ResolveClientType(clientHeader, userAgent)
+
+	token, refreshToken, userResp, err := ctrl.service.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
+		// Response Error Seragam
 		response.Error(c, http.StatusUnauthorized, "AUTH_FAILED", "Email atau password salah", nil)
 		return
 	}
+	isProd := os.Getenv("APP_ENV") == "production"
 
-	// Cookie configuration
-	c.SetCookie("access_token", token, 86400, "/", "", false, true)
+	if platform.IsWebClient(clientType) {
+		c.SetCookie(
+			"access_token",
+			token,
+			86400,
+			"/",
+			"",
+			isProd,
+			true,
+		)
 
-	response.Success(c, http.StatusOK, userResp, nil)
+		c.SetCookie(
+			"refresh_token",
+			refreshToken,
+			3600*24*7,
+			"/",
+			"",
+			isProd,
+			true)
+	}
+
+	responseData := gin.H{
+		"user":          userResp,
+		"access_token":  token,
+		"refresh_token": refreshToken,
+	}
+
+	response.Success(c, http.StatusOK, responseData, nil)
 }
 
 func (ctrl *Controller) Register(c *gin.Context) {

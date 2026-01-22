@@ -2,7 +2,6 @@ package auth_test
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"go-sqlc-starter/internal/api/v1/auth"
 	authMock "go-sqlc-starter/internal/api/v1/mock/auth"
@@ -29,10 +28,11 @@ func TestService_Login(t *testing.T) {
 			GetByEmail(ctx, "admin").
 			Return(dbgen.GetUserByEmailRow{Email: "admin", Password: string(pw)}, nil)
 
-		token, resp, err := service.Login(ctx, "admin", "password123")
+		token, refreshToken, resp, err := service.Login(ctx, "admin", "password123")
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, token)
+		assert.NotEmpty(t, refreshToken)
 		assert.Equal(t, "admin", resp.Email)
 	})
 
@@ -41,7 +41,7 @@ func TestService_Login(t *testing.T) {
 			GetByEmail(ctx, "admin").
 			Return(dbgen.GetUserByEmailRow{Email: "admin", Password: string(pw)}, nil)
 
-		_, _, err := service.Login(ctx, "admin", "wrongpass")
+		_, _, _, err := service.Login(ctx, "admin", "wrongpass")
 		assert.Error(t, err)
 	})
 }
@@ -64,14 +64,14 @@ func TestService_Register(t *testing.T) {
 			Create(ctx, gomock.Any()).
 			Return(dbgen.CreateUserRow{
 				Email: req.Email,
-				Role:  sql.NullString{String: "customer", Valid: true},
+				Role:  "CUSTOMER",
 			}, nil)
 
 		resp, err := service.Register(ctx, req)
 
 		assert.NoError(t, err)
 		assert.Equal(t, req.Email, resp.Email)
-		assert.Equal(t, "customer", resp.Role)
+		assert.Equal(t, "CUSTOMER", resp.Role)
 	})
 
 	t.Run("Error Register", func(t *testing.T) {

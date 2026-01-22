@@ -7,7 +7,6 @@ package dbgen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,21 +26,21 @@ RETURNING id, first_name, last_name, email, password, role, created_at
 `
 
 type CreateUserParams struct {
-	Email     string         `json:"email"`
-	FirstName string         `json:"first_name"`
-	LastName  string         `json:"last_name"`
-	Password  string         `json:"password"`
-	Role      sql.NullString `json:"role"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Password  string `json:"password"`
+	Role      string `json:"role"`
 }
 
 type CreateUserRow struct {
-	ID        uuid.UUID      `json:"id"`
-	FirstName string         `json:"first_name"`
-	LastName  string         `json:"last_name"`
-	Email     string         `json:"email"`
-	Password  string         `json:"password"`
-	Role      sql.NullString `json:"role"`
-	CreatedAt time.Time      `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Password  string    `json:"password"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -73,11 +72,11 @@ LIMIT 1
 `
 
 type GetUserByEmailRow struct {
-	ID        uuid.UUID      `json:"id"`
-	Email     string         `json:"email"`
-	Password  string         `json:"password"`
-	Role      sql.NullString `json:"role"`
-	CreatedAt time.Time      `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	Password  string    `json:"password"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
