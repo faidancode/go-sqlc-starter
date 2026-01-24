@@ -5,25 +5,25 @@ import "time"
 // --- REQUEST DTO ---
 
 type CreateCategoryRequest struct {
-	// Tambahkan binding:"required" agar Gin menjalankan validasi otomatis
 	Name        string `json:"name" binding:"required" validate:"required,min=2,max=100"`
+	Slug        string `json:"slug"`
 	Description string `json:"description" validate:"max=500"`
 	ImageUrl    string `json:"imageUrl" validate:"omitempty,url"`
 }
 
 type UpdateCategoryRequest struct {
 	Name        string `json:"name" binding:"required" validate:"required,min=2,max=100"`
+	Slug        string `json:"slug"`
 	Description string `json:"description" validate:"max=500"`
 	ImageUrl    string `json:"imageUrl" validate:"omitempty,url"`
-	IsActive    *bool  `json:"is_active" binding:"required" validate:"required"`
+	IsActive    *bool  `json:"isActive" binding:"required" validate:"required"`
 }
 
 type ListCategoryRequest struct {
-	Page    int    `form:"page" binding:"omitempty,min=1"`
-	Limit   int    `form:"limit" binding:"omitempty,min=1,max=100"`
-	Search  string `form:"search"`
-	SortBy  string `form:"sortBy" binding:"omitempty,oneof=name created_at"`
-	SortDir string `form:"sortDir" binding:"omitempty,oneof=asc desc"`
+	Page   int32  `form:"page"`
+	Limit  int32  `form:"pageSize"`
+	Search string `form:"search"`
+	Sort   string `form:"sort"`
 }
 
 // --- RESPONSE DTO ---

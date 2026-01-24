@@ -82,26 +82,24 @@ WHERE
         OR description ILIKE '%' || $3::text || '%'
     )
 ORDER BY 
-    -- Sort by Name
+    -- Group 1: Sort berdasarkan STRING (Name, dll)
     CASE 
-        WHEN $4::text = 'name' AND $5::text = 'asc' 
-            THEN name 
+        WHEN $4::text = 'name' AND $5::text = 'asc' THEN name 
     END ASC,
     CASE 
-        WHEN $4::text = 'name' AND $5::text = 'desc' 
-            THEN name 
+        WHEN $4::text = 'name' AND $5::text = 'desc' THEN name 
     END DESC,
-    -- Sort by CreatedAt (Default)
+
+    -- Group 2: Sort berdasarkan TIMESTAMP (Created At)
+    -- Kita pisahkan grup CASE agar tipe data tidak bentrok
     CASE 
-        WHEN $4::text = 'created_at' AND $5::text = 'asc' 
-            THEN created_at 
+        WHEN $4::text = 'created_at' AND $5::text = 'asc' THEN created_at 
     END ASC,
     CASE 
-        WHEN $4::text = 'created_at' AND $5::text = 'desc' 
-            THEN created_at 
-    END DESC,
-    -- Fallback jika tidak ada sort yang cocok
-    created_at DESC
+        WHEN ($4::text = 'created_at' AND $5::text = 'desc') 
+             OR ($4::text NOT IN ('name', 'created_at')) -- Fallback Logic di sini
+             THEN created_at 
+    END DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -258,7 +256,7 @@ func (q *Queries) SoftDeleteCategory(ctx context.Context, id uuid.UUID) error {
 
 const updateCategory = `-- name: UpdateCategory :one
 UPDATE categories 
-SET name = $2, slug = $3, description = $4, image_url = $5, updated_at = NOW()
+SET name = $2, slug = $3, description = $4, image_url = $5, is_active = $6, updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, name, slug, description, image_url, is_active, created_at, updated_at, deleted_at
 `
@@ -269,6 +267,7 @@ type UpdateCategoryParams struct {
 	Slug        string         `json:"slug"`
 	Description sql.NullString `json:"description"`
 	ImageUrl    sql.NullString `json:"image_url"`
+	IsActive    sql.NullBool   `json:"is_active"`
 }
 
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
@@ -278,6 +277,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		arg.Slug,
 		arg.Description,
 		arg.ImageUrl,
+		arg.IsActive,
 	)
 	var i Category
 	err := row.Scan(

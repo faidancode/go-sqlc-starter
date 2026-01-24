@@ -30,6 +30,18 @@ type Address struct {
 	DeletedAt      sql.NullTime   `json:"deleted_at"`
 }
 
+type Brand struct {
+	ID          uuid.UUID      `json:"id"`
+	Name        string         `json:"name"`
+	Slug        string         `json:"slug"`
+	Description sql.NullString `json:"description"`
+	ImageUrl    sql.NullString `json:"image_url"`
+	IsActive    sql.NullBool   `json:"is_active"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   sql.NullTime   `json:"deleted_at"`
+}
+
 type Cart struct {
 	ID        uuid.UUID    `json:"id"`
 	UserID    uuid.UUID    `json:"user_id"`
@@ -113,6 +125,19 @@ type Product struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   sql.NullTime   `json:"deleted_at"`
+}
+
+type Review struct {
+	ID                 uuid.UUID    `json:"id"`
+	UserID             uuid.UUID    `json:"user_id"`
+	ProductID          uuid.UUID    `json:"product_id"`
+	OrderID            uuid.UUID    `json:"order_id"`
+	Rating             int32        `json:"rating"`
+	Comment            string       `json:"comment"`
+	IsVerifiedPurchase bool         `json:"is_verified_purchase"`
+	CreatedAt          time.Time    `json:"created_at"`
+	UpdatedAt          time.Time    `json:"updated_at"`
+	DeletedAt          sql.NullTime `json:"deleted_at"`
 }
 
 type User struct {

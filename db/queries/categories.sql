@@ -18,26 +18,24 @@ WHERE
         OR description ILIKE '%' || sqlc.narg('search')::text || '%'
     )
 ORDER BY 
-    -- Sort by Name
+    -- Group 1: Sort berdasarkan STRING (Name, dll)
     CASE 
-        WHEN sqlc.arg('sort_col')::text = 'name' AND sqlc.arg('sort_dir')::text = 'asc' 
-            THEN name 
+        WHEN sqlc.arg('sort_col')::text = 'name' AND sqlc.arg('sort_dir')::text = 'asc' THEN name 
     END ASC,
     CASE 
-        WHEN sqlc.arg('sort_col')::text = 'name' AND sqlc.arg('sort_dir')::text = 'desc' 
-            THEN name 
+        WHEN sqlc.arg('sort_col')::text = 'name' AND sqlc.arg('sort_dir')::text = 'desc' THEN name 
     END DESC,
-    -- Sort by CreatedAt (Default)
+
+    -- Group 2: Sort berdasarkan TIMESTAMP (Created At)
+    -- Kita pisahkan grup CASE agar tipe data tidak bentrok
     CASE 
-        WHEN sqlc.arg('sort_col')::text = 'created_at' AND sqlc.arg('sort_dir')::text = 'asc' 
-            THEN created_at 
+        WHEN sqlc.arg('sort_col')::text = 'created_at' AND sqlc.arg('sort_dir')::text = 'asc' THEN created_at 
     END ASC,
     CASE 
-        WHEN sqlc.arg('sort_col')::text = 'created_at' AND sqlc.arg('sort_dir')::text = 'desc' 
-            THEN created_at 
-    END DESC,
-    -- Fallback jika tidak ada sort yang cocok
-    created_at DESC
+        WHEN (sqlc.arg('sort_col')::text = 'created_at' AND sqlc.arg('sort_dir')::text = 'desc') 
+             OR (sqlc.arg('sort_col')::text NOT IN ('name', 'created_at')) -- Fallback Logic di sini
+             THEN created_at 
+    END DESC
 LIMIT $1 OFFSET $2;
 
 -- name: GetCategoryByID :one
@@ -50,7 +48,7 @@ RETURNING *;
 
 -- name: UpdateCategory :one
 UPDATE categories 
-SET name = $2, slug = $3, description = $4, image_url = $5, updated_at = NOW()
+SET name = $2, slug = $3, description = $4, image_url = $5, is_active = $6, updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 

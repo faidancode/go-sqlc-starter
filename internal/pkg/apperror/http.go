@@ -1,25 +1,21 @@
 package apperror
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 type HTTPError struct {
-	Status  int
-	Code    string
-	Message string
-	Details any
+	Status  int    `json:"-"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Details any    `json:"details,omitempty"`
 }
 
+// ToHTTP converts any error to HTTPError
 func ToHTTP(err error) *HTTPError {
-	if err == nil {
-		return &HTTPError{
-			Status:  http.StatusOK,
-			Code:    "",
-			Message: "",
-			Details: nil,
-		}
-	}
-
-	if appErr, ok := err.(*AppError); ok {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
 		return &HTTPError{
 			Status:  appErr.HTTPStatus,
 			Code:    appErr.Code,
@@ -28,10 +24,11 @@ func ToHTTP(err error) *HTTPError {
 		}
 	}
 
+	// Fallback for unknown errors
 	return &HTTPError{
 		Status:  http.StatusInternalServerError,
 		Code:    CodeInternalError,
-		Message: "internal server error",
+		Message: "An unexpected error occurred",
 		Details: nil,
 	}
 }

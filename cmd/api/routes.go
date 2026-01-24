@@ -3,10 +3,12 @@ package main
 import (
 	"go-sqlc-starter/internal/api/v1/address"
 	"go-sqlc-starter/internal/api/v1/auth"
+	"go-sqlc-starter/internal/api/v1/brand"
 	"go-sqlc-starter/internal/api/v1/cart"
 	"go-sqlc-starter/internal/api/v1/category"
 	"go-sqlc-starter/internal/api/v1/order"
 	"go-sqlc-starter/internal/api/v1/product"
+	"go-sqlc-starter/internal/api/v1/review"
 	"go-sqlc-starter/internal/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +17,9 @@ import (
 type ControllerRegistry struct {
 	Auth     *auth.Controller
 	Category *category.Controller
+	Brand    *brand.Controller
 	Product  *product.Controller
+	Review   *review.Controller
 	Cart     *cart.Controller
 	Address  *address.Controller
 	Order    *order.Controller
@@ -49,6 +53,25 @@ func setupRoutes(r *gin.Engine, reg ControllerRegistry) {
 			adminCategories.PUT("/:id", reg.Category.Update)
 			adminCategories.DELETE("/:id", reg.Category.Delete)
 			adminCategories.PATCH("/:id/restore", reg.Category.Restore)
+		}
+
+		brands := v1.Group("/brands")
+		{
+			brands.GET("", reg.Brand.ListPublic)
+			brands.GET("/:id", reg.Brand.GetByID)
+		}
+
+		adminBrands := v1.Group("/admin/brands")
+		adminBrands.Use(
+			middleware.AuthMiddleware(),
+			middleware.RoleMiddleware("ADMIN", "SUPERADMIN"),
+		)
+		{
+			adminBrands.GET("", reg.Brand.ListAdmin)
+			adminBrands.POST("", reg.Brand.Create)
+			adminBrands.PATCH("/:id", reg.Brand.Update)
+			adminBrands.DELETE("/:id", reg.Brand.Delete)
+			adminBrands.PATCH("/:id/restore", reg.Brand.Restore)
 		}
 
 		products := v1.Group("/products")

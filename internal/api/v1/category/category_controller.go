@@ -2,10 +2,14 @@ package category
 
 import (
 	"go-sqlc-starter/internal/pkg/response"
+	"go-sqlc-starter/internal/pkg/utils"
+	"log"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Controller struct {
@@ -48,6 +52,13 @@ func (ctrl *Controller) ListAdmin(c *gin.Context) {
 		return
 	}
 
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Limit <= 0 {
+		req.Limit = 10
+	}
+
 	// Memanggil service dengan struct req
 	data, total, err := ctrl.service.ListAdmin(c.Request.Context(), req)
 	if err != nil {
@@ -70,7 +81,21 @@ func (ctrl *Controller) ListAdmin(c *gin.Context) {
 }
 
 func (ctrl *Controller) GetByID(c *gin.Context) {
-	res, err := ctrl.service.GetByID(c.Request.Context(), c.Param("id"))
+	id := c.Param("id")
+
+	// ✅ Validasi UUID di controller
+	if _, err := uuid.Parse(id); err != nil {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"INVALID_ID",
+			"Invalid category ID",
+			err.Error(),
+		)
+		return
+	}
+
+	res, err := ctrl.service.GetByID(c.Request.Context(), id)
 	if err != nil {
 		response.Error(
 			c,
@@ -85,20 +110,72 @@ func (ctrl *Controller) GetByID(c *gin.Context) {
 	response.Success(c, http.StatusOK, res, nil)
 }
 
+// 3. CREATE BRAND
 func (ctrl *Controller) Create(c *gin.Context) {
-	var req CreateCategoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	ctx := c.Request.Context()
+
+	// 1. Parse multipart form (max 10 MB)
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
 		response.Error(
 			c,
 			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"Invalid input",
+			"INVALID_FORM",
+			"Invalid multipart form",
 			err.Error(),
 		)
 		return
 	}
 
-	res, err := ctrl.service.Create(c.Request.Context(), req)
+	// 2. Parse form values
+	name := c.PostForm("name")
+	description := c.PostForm("description")
+
+	req := CreateCategoryRequest{
+		Name:        name,
+		Slug:        utils.GenerateSlug(name),
+		Description: description,
+	}
+	// 3. Validate required fields
+	if req.Name == "" {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"VALIDATION_ERROR",
+			"Missing required fields: name",
+			nil,
+		)
+		return
+	}
+	log.Println(req)
+
+	// 4. Handle optional file upload
+	var (
+		file     multipart.File
+		filename string
+	)
+
+	fileHeader, err := c.FormFile("image") // form-data key: image
+	if err == nil && fileHeader != nil {
+		openedFile, err := fileHeader.Open()
+		if err != nil {
+			response.Error(
+				c,
+				http.StatusBadRequest,
+				"FILE_ERROR",
+				"Failed to open uploaded file",
+				err.Error(),
+			)
+			return
+		}
+
+		defer openedFile.Close()
+
+		file = openedFile
+		filename = fileHeader.Filename
+	}
+
+	// 5. Call service
+	result, err := ctrl.service.Create(ctx, req, file, filename)
 	if err != nil {
 		response.Error(
 			c,
@@ -110,23 +187,69 @@ func (ctrl *Controller) Create(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusCreated, res, nil)
+	// 6. Success response
+	response.Success(
+		c,
+		http.StatusCreated,
+		result,
+		nil,
+	)
 }
 
 func (ctrl *Controller) Update(c *gin.Context) {
-	var req CreateCategoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
 		response.Error(
 			c,
 			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"Invalid input",
+			"INVALID_ID",
+			"Invalid ID format",
 			err.Error(),
 		)
 		return
 	}
 
-	res, err := ctrl.service.Update(c.Request.Context(), c.Param("id"), req)
+	err := c.Request.ParseMultipartForm(10 << 20)
+	if err != nil {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"INVALID_FORM",
+			"Invalid multipart form",
+			err.Error(),
+		)
+		return
+	}
+	// 2. Parse form values
+	name := c.PostForm("name")
+	description := c.PostForm("description")
+
+	// 2. Parse form fields (sesuaikan dengan struct UpdateCategoryRequest Anda)
+	// Karena multipart/form-data, kita ambil via PostForm, bukan BindJSON
+	req := UpdateCategoryRequest{
+		Name:        name,
+		Slug:        utils.GenerateSlug(name),
+		Description: description,
+	}
+
+	// 3. Get uploaded file (optional)
+	var file multipart.File
+	var filename string
+	fileHeader, err := c.FormFile("image") // Key form-data: "image"
+
+	if err == nil && fileHeader != nil {
+		file, err = fileHeader.Open()
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "FILE_ERROR", "Failed to open uploaded file", err.Error())
+			return
+		}
+		defer file.Close()
+		filename = fileHeader.Filename
+	}
+
+	// 4. Call service
+	// Pastikan Service.Update sudah diupdate signature-nya untuk menerima (ctx, id, req, file, filename)
+	res, err := ctrl.service.Update(c.Request.Context(), c.Param("id"), req, file, filename)
 	if err != nil {
 		response.Error(
 			c,
@@ -142,7 +265,22 @@ func (ctrl *Controller) Update(c *gin.Context) {
 }
 
 func (ctrl *Controller) Delete(c *gin.Context) {
-	if err := ctrl.service.Delete(c.Request.Context(), c.Param("id")); err != nil {
+	id := c.Param("id")
+
+	// 1. Validasi UUID lebih awal
+	if _, err := uuid.Parse(id); err != nil {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"INVALID_ID",
+			"Invalid category ID",
+			err.Error(),
+		)
+		return
+	}
+
+	// 2. Panggil service
+	if err := ctrl.service.Delete(c.Request.Context(), id); err != nil {
 		response.Error(
 			c,
 			http.StatusInternalServerError,
