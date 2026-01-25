@@ -26,24 +26,24 @@ type ListProductAdminRequest struct {
 
 // CreateProductRequest digunakan untuk input Admin saat membuat produk baru
 type CreateProductRequest struct {
-	CategoryID  string  `json:"category_id" binding:"required"`
+	CategoryID  string  `json:"categoryId" binding:"required"`
 	Name        string  `json:"name" binding:"required"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price" binding:"required"`
 	Stock       int32   `json:"stock" binding:"required"`
 	SKU         string  `json:"sku"`
-	ImageUrl    string  `json:"image_url"`
+	ImageUrl    string  `json:"imagedUrl"`
 }
 
 type UpdateProductRequest struct {
-	CategoryID  string  `json:"category_id"`
+	CategoryID  string  `json:"categoryId"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
 	Stock       int32   `json:"stock"`
 	SKU         string  `json:"sku"`
-	ImageUrl    string  `json:"image_url"`
-	IsActive    *bool   `json:"is_active"` // Gunakan pointer agar bisa membedakan false (bool) dan nil (tidak dikirim)
+	ImageUrl    string  `json:"imagedUrl"`
+	IsActive    *bool   `json:"isActive"` // Gunakan pointer agar bisa membedakan false (bool) dan nil (tidak dikirim)
 }
 
 // ==================== RESPONSE STRUCTS ====================
@@ -51,11 +51,11 @@ type UpdateProductRequest struct {
 // ProductPublicResponse untuk list produk (ringkas)
 type ProductPublicResponse struct {
 	ID           string  `json:"id"`
-	CategoryName string  `json:"category_name"`
+	CategoryName string  `json:"categoryName"`
 	Name         string  `json:"name"`
 	Slug         string  `json:"slug"`
 	Price        float64 `json:"price"`
-	ImageURL     string  `json:"image_url,omitempty"`
+	ImageURL     string  `json:"imagedUrl,omitempty"`
 }
 
 // ProductDetailResponse untuk detail produk dengan reviews
@@ -66,43 +66,43 @@ type ProductDetailResponse struct {
 	Description    string            `json:"description"`
 	Price          float64           `json:"price"`
 	Stock          int32             `json:"stock"`
-	CategoryID     string            `json:"category_id,omitempty"`
-	CategoryName   string            `json:"category_name,omitempty"`
-	BrandID        string            `json:"brand_id,omitempty"`
-	BrandName      string            `json:"brand_name,omitempty"`
-	ImageURL       string            `json:"image_url,omitempty"`
+	CategoryID     string            `json:"categoryId,omitempty"`
+	CategoryName   string            `json:"categoryName,omitempty"`
+	BrandID        string            `json:"brandId,omitempty"`
+	BrandName      string            `json:"brandName,omitempty"`
+	ImageURL       string            `json:"imagedUrl,omitempty"`
 	SKU            string            `json:"sku,omitempty"`
 	Specifications map[string]string `json:"specifications,omitempty"`
 
 	// Review fields
 	Reviews       []ReviewSummary `json:"reviews"`
-	AverageRating float64         `json:"average_rating"`
-	TotalReviews  int64           `json:"total_reviews"`
+	AverageRating float64         `json:"averagedRating"`
+	TotalReviews  int64           `json:"totaldReviews"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ReviewSummary for product detail (5 reviews terbaru)
 type ReviewSummary struct {
 	ID        string    `json:"id"`
-	UserName  string    `json:"user_name"`
+	UserName  string    `json:"userName"`
 	Rating    int32     `json:"rating"`
 	Comment   string    `json:"comment"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // ProductAdminResponse untuk dashboard admin
 type ProductAdminResponse struct {
 	ID           string    `json:"id"`
-	CategoryName string    `json:"category_name"`
+	CategoryName string    `json:"categoryName"`
 	Name         string    `json:"name"`
 	Slug         string    `json:"slug"`
 	Price        float64   `json:"price"`
 	Stock        int32     `json:"stock"`
 	SKU          string    `json:"sku"`
-	ImageURL     string    `json:"image_url,omitempty"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ImageURL     string    `json:"imagedUrl,omitempty"`
+	IsActive     bool      `json:"isActive"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
