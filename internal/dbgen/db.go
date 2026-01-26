@@ -93,6 +93,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getCategoryByIDStmt, err = db.PrepareContext(ctx, getCategoryByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCategoryByID: %w", err)
 	}
+	if q.getCategoryBySlugStmt, err = db.PrepareContext(ctx, getCategoryBySlug); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCategoryBySlug: %w", err)
+	}
 	if q.getCompletedOrderForReviewStmt, err = db.PrepareContext(ctx, getCompletedOrderForReview); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCompletedOrderForReview: %w", err)
 	}
@@ -316,6 +319,11 @@ func (q *Queries) Close() error {
 	if q.getCategoryByIDStmt != nil {
 		if cerr := q.getCategoryByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCategoryByIDStmt: %w", cerr)
+		}
+	}
+	if q.getCategoryBySlugStmt != nil {
+		if cerr := q.getCategoryBySlugStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCategoryBySlugStmt: %w", cerr)
 		}
 	}
 	if q.getCompletedOrderForReviewStmt != nil {
@@ -555,6 +563,7 @@ type Queries struct {
 	getCartByUserIDStmt             *sql.Stmt
 	getCartDetailStmt               *sql.Stmt
 	getCategoryByIDStmt             *sql.Stmt
+	getCategoryBySlugStmt           *sql.Stmt
 	getCompletedOrderForReviewStmt  *sql.Stmt
 	getOrderByIDStmt                *sql.Stmt
 	getOrderItemsStmt               *sql.Stmt
@@ -619,6 +628,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getCartByUserIDStmt:             q.getCartByUserIDStmt,
 		getCartDetailStmt:               q.getCartDetailStmt,
 		getCategoryByIDStmt:             q.getCategoryByIDStmt,
+		getCategoryBySlugStmt:           q.getCategoryBySlugStmt,
 		getCompletedOrderForReviewStmt:  q.getCompletedOrderForReviewStmt,
 		getOrderByIDStmt:                q.getOrderByIDStmt,
 		getOrderItemsStmt:               q.getOrderItemsStmt,

@@ -75,6 +75,6 @@ type ReviewEligibilityResponse struct {
 
 type ReviewStatsResponse struct {
 	AverageRating   float64       `json:"averageRating"`
-	TotalReviews    int64         `json:"totalReviews"`
+	RatingCount     int64         `json:"ratingCount"`
 	RatingBreakdown map[int]int64 `json:"ratingBreakdown,omitempty"` // optional for future
 }

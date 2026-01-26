@@ -121,13 +121,13 @@ func (s *service) GetBySlug(ctx context.Context, slug string) (ProductDetailResp
 	}
 
 	// 4. Get total reviews count
-	totalReviews, err := s.reviewRepo.CountByProductID(ctx, product.ID)
+	ratingCount, err := s.reviewRepo.CountByProductID(ctx, product.ID)
 	if err != nil && err != sql.ErrNoRows {
-		totalReviews = 0
+		ratingCount = 0
 	}
 
 	// 5. Map to response
-	return s.mapToDetailResponse(product, reviews, avgRating, totalReviews), nil
+	return s.mapToDetailResponse(product, reviews, avgRating, ratingCount), nil
 }
 
 func (s *service) ListAdmin(
@@ -486,7 +486,7 @@ func (s *service) mapToDetailResponse(
 	product dbgen.GetProductBySlugRow,
 	reviews []dbgen.GetReviewsByProductIDRow,
 	avgRating float64,
-	totalReviews int64,
+	ratingCount int64,
 ) ProductDetailResponse {
 	price, _ := strconv.ParseFloat(product.Price, 64)
 
@@ -513,7 +513,7 @@ func (s *service) mapToDetailResponse(
 		CategoryID:    product.CategoryID.String(),
 		Reviews:       reviewSummaries,
 		AverageRating: avgRating,
-		TotalReviews:  totalReviews,
+		RatingCount:   ratingCount,
 		CreatedAt:     product.CreatedAt,
 		UpdatedAt:     product.UpdatedAt,
 	}
