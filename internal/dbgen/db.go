@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addCartItemStmt, err = db.PrepareContext(ctx, addCartItem); err != nil {
+		return nil, fmt.Errorf("error preparing query AddCartItem: %w", err)
+	}
 	if q.checkReviewExistsStmt, err = db.PrepareContext(ctx, checkReviewExists); err != nil {
 		return nil, fmt.Errorf("error preparing query CheckReviewExists: %w", err)
 	}
@@ -47,9 +50,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.createCartStmt, err = db.PrepareContext(ctx, createCart); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateCart: %w", err)
-	}
-	if q.createCartItemStmt, err = db.PrepareContext(ctx, createCartItem); err != nil {
-		return nil, fmt.Errorf("error preparing query CreateCartItem: %w", err)
 	}
 	if q.createCategoryStmt, err = db.PrepareContext(ctx, createCategory); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateCategory: %w", err)
@@ -206,6 +206,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addCartItemStmt != nil {
+		if cerr := q.addCartItemStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addCartItemStmt: %w", cerr)
+		}
+	}
 	if q.checkReviewExistsStmt != nil {
 		if cerr := q.checkReviewExistsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing checkReviewExistsStmt: %w", cerr)
@@ -244,11 +249,6 @@ func (q *Queries) Close() error {
 	if q.createCartStmt != nil {
 		if cerr := q.createCartStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createCartStmt: %w", cerr)
-		}
-	}
-	if q.createCartItemStmt != nil {
-		if cerr := q.createCartItemStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing createCartItemStmt: %w", cerr)
 		}
 	}
 	if q.createCategoryStmt != nil {
@@ -540,6 +540,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                              DBTX
 	tx                              *sql.Tx
+	addCartItemStmt                 *sql.Stmt
 	checkReviewExistsStmt           *sql.Stmt
 	checkUserPurchasedProductStmt   *sql.Stmt
 	countCartItemsStmt              *sql.Stmt
@@ -548,7 +549,6 @@ type Queries struct {
 	createAddressStmt               *sql.Stmt
 	createBrandStmt                 *sql.Stmt
 	createCartStmt                  *sql.Stmt
-	createCartItemStmt              *sql.Stmt
 	createCategoryStmt              *sql.Stmt
 	createOrderStmt                 *sql.Stmt
 	createOrderItemStmt             *sql.Stmt
@@ -605,6 +605,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                              tx,
 		tx:                              tx,
+		addCartItemStmt:                 q.addCartItemStmt,
 		checkReviewExistsStmt:           q.checkReviewExistsStmt,
 		checkUserPurchasedProductStmt:   q.checkUserPurchasedProductStmt,
 		countCartItemsStmt:              q.countCartItemsStmt,
@@ -613,7 +614,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		createAddressStmt:               q.createAddressStmt,
 		createBrandStmt:                 q.createBrandStmt,
 		createCartStmt:                  q.createCartStmt,
-		createCartItemStmt:              q.createCartItemStmt,
 		createCategoryStmt:              q.createCategoryStmt,
 		createOrderStmt:                 q.createOrderStmt,
 		createOrderItemStmt:             q.createOrderItemStmt,

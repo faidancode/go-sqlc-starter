@@ -77,7 +77,7 @@ type ProductDetailResponse struct {
 	// Review fields
 	Reviews       []ReviewSummary `json:"reviews"`
 	AverageRating float64         `json:"averagedRating"`
-	RatingCount   int64           `json:"totaldReviews"`
+	RatingCount   int64           `json:"ratignCount"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

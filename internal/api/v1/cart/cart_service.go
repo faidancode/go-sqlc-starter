@@ -2,10 +2,14 @@ package cart
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	autherrors "go-sqlc-starter/internal/api/v1/auth/errors"
+	carterrors "go-sqlc-starter/internal/api/v1/cart/errors"
+	producterrors "go-sqlc-starter/internal/api/v1/product/errors"
 	"go-sqlc-starter/internal/dbgen"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -15,55 +19,103 @@ type Service interface {
 	Count(ctx context.Context, userID string) (int64, error)
 	Detail(ctx context.Context, userID string) (CartDetailResponse, error)
 
-	UpdateQty(ctx context.Context, userID, productId string, qty int32) error
-	Increment(ctx context.Context, userID, productId string) error
-	Decrement(ctx context.Context, userID, productId string) error
+	AddItem(ctx context.Context, userID string, req AddItemRequest) error
+	UpdateQty(ctx context.Context, userID, productID string, req UpdateQtyRequest) error
 
-	DeleteItem(ctx context.Context, userID, productId string) error
+	Increment(ctx context.Context, userID, productID string) error
+	Decrement(ctx context.Context, userID, productID string) error
+
+	DeleteItem(ctx context.Context, userID, productID string) error
 	Delete(ctx context.Context, userID string) error
 }
 
 type service struct {
-	repo Repository
+	repo     Repository
+	validate *validator.Validate
 }
 
 func NewService(r Repository) Service {
-	return &service{repo: r}
+	return &service{
+		repo:     r,
+		validate: validator.New(),
+	}
 }
 
-func (s *service) getCart(ctx context.Context, userID string) (uuid.UUID, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid user id")
-	}
+// ========================
+// helpers
+// ========================
 
+func (s *service) parseUserID(userID string) (uuid.UUID, error) {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return uuid.Nil, autherrors.ErrInvalidUserID
+	}
+	return id, nil
+}
+
+func (s *service) parseProductID(productID string) (uuid.UUID, error) {
+	id, err := uuid.Parse(productID)
+	if err != nil {
+		return uuid.Nil, producterrors.ErrInvalidProductID
+	}
+	return id, nil
+}
+
+func (s *service) getCartOnly(ctx context.Context, uid uuid.UUID) (uuid.UUID, error) {
 	cart, err := s.repo.GetByUserID(ctx, uid)
 	if err != nil {
-		cart, err = s.repo.CreateCart(ctx, uid)
-		if err != nil {
-			return uuid.Nil, err
+		if err == sql.ErrNoRows {
+			return uuid.Nil, carterrors.ErrCartNotFound
 		}
+		return uuid.Nil, err
 	}
 	return cart.ID, nil
 }
 
+func (s *service) getOrCreateCart(ctx context.Context, uid uuid.UUID) (uuid.UUID, error) {
+	cart, err := s.repo.GetByUserID(ctx, uid)
+	if err == nil {
+		return cart.ID, nil
+	}
+
+	cart, err = s.repo.CreateCart(ctx, uid)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return cart.ID, nil
+}
+
+// ========================
+// service methods
+// ========================
+
 func (s *service) Create(ctx context.Context, userID string) error {
-	_, err := s.getCart(ctx, userID)
+	uid, err := s.parseUserID(userID)
+	if err != nil {
+		return err
+	}
+	_, err = s.getOrCreateCart(ctx, uid)
 	return err
 }
 
 func (s *service) Count(ctx context.Context, userID string) (int64, error) {
-	cartID, err := s.getCart(ctx, userID)
+	uid, err := s.parseUserID(userID)
 	if err != nil {
 		return 0, err
 	}
+
+	cartID, err := s.getCartOnly(ctx, uid)
+	if err != nil {
+		return 0, err
+	}
+
 	return s.repo.Count(ctx, cartID)
 }
 
 func (s *service) Detail(ctx context.Context, userID string) (CartDetailResponse, error) {
-	uid, err := uuid.Parse(userID)
+	uid, err := s.parseUserID(userID)
 	if err != nil {
-		return CartDetailResponse{}, fmt.Errorf("invalid user id")
+		return CartDetailResponse{}, err
 	}
 
 	rows, err := s.repo.GetDetail(ctx, uid)
@@ -71,7 +123,7 @@ func (s *service) Detail(ctx context.Context, userID string) (CartDetailResponse
 		return CartDetailResponse{}, err
 	}
 
-	items := make([]CartItemDetailResponse, 0)
+	items := make([]CartItemDetailResponse, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, CartItemDetailResponse{
 			ID:        r.ID.String(),
@@ -85,47 +137,165 @@ func (s *service) Detail(ctx context.Context, userID string) (CartDetailResponse
 	return CartDetailResponse{Items: items}, nil
 }
 
-func (s *service) UpdateQty(ctx context.Context, userID, cartItemID string, qty int32) error {
-	cartID, err := s.getCart(ctx, userID)
+func (s *service) AddItem(ctx context.Context, userID string, req AddItemRequest) error {
+	if err := s.validate.Struct(req); err != nil {
+		return carterrors.MapValidationError(err)
+	}
+
+	uid, err := s.parseUserID(userID)
 	if err != nil {
 		return err
 	}
 
-	itemID, err := uuid.Parse(cartItemID)
+	pid, err := s.parseProductID(req.ProductID)
 	if err != nil {
-		return fmt.Errorf("Invalid Product Id")
+		return err
+	}
+
+	cartID, err := s.getOrCreateCart(ctx, uid)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.AddItem(ctx, dbgen.AddCartItemParams{
+		CartID:     cartID,
+		ProductID:  pid,
+		Quantity:   req.Qty,
+		PriceAtAdd: req.Price,
+	})
+}
+
+func (s *service) UpdateQty(ctx context.Context, userID, productID string, req UpdateQtyRequest) error {
+	if err := s.validate.Struct(req); err != nil {
+		return carterrors.MapValidationError(err)
+	}
+
+	if req.Qty <= 0 {
+		return carterrors.ErrInvalidQty
+	}
+
+	uid, err := s.parseUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	pid, err := s.parseProductID(productID)
+	if err != nil {
+		return err
+	}
+
+	cartID, err := s.getCartOnly(ctx, uid)
+	if err != nil {
+		return err
 	}
 
 	_, err = s.repo.UpdateQty(ctx, dbgen.UpdateCartItemQtyParams{
-		CartID:   cartID,
-		ID:       itemID,
-		Quantity: qty,
+		CartID:    cartID,
+		ProductID: pid,
+		Quantity:  req.Qty,
 	})
+
+	if err == sql.ErrNoRows {
+		return carterrors.ErrCartItemNotFound
+	}
 
 	return err
 }
 
-func (s *service) Increment(ctx context.Context, userID, productId string) error {
-	return s.UpdateQty(ctx, userID, productId, 1)
-}
-
-func (s *service) Decrement(ctx context.Context, userID, productId string) error {
-	return s.UpdateQty(ctx, userID, productId, -1)
-}
-
-func (s *service) DeleteItem(ctx context.Context, userID, productId string) error {
-	cartID, err := s.getCart(ctx, userID)
+func (s *service) Increment(ctx context.Context, userID, productID string) error {
+	uid, err := s.parseUserID(userID)
 	if err != nil {
 		return err
 	}
-	bid, _ := uuid.Parse(productId)
-	return s.repo.DeleteItem(ctx, cartID, bid)
+
+	pid, err := s.parseProductID(productID)
+	if err != nil {
+		return err
+	}
+
+	cartID, err := s.getCartOnly(ctx, uid)
+	if err != nil {
+		return err
+	}
+
+	// komentar: increment = qty + 1 via UpdateQty
+	_, err = s.repo.UpdateQty(ctx, dbgen.UpdateCartItemQtyParams{
+		CartID:    cartID,
+		ProductID: pid,
+		Quantity:  1,
+	})
+
+	if err == sql.ErrNoRows {
+		return carterrors.ErrCartItemNotFound
+	}
+
+	return err
+}
+
+func (s *service) Decrement(ctx context.Context, userID, productID string) error {
+	uid, err := s.parseUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	pid, err := s.parseProductID(productID)
+	if err != nil {
+		return err
+	}
+
+	cartID, err := s.getCartOnly(ctx, uid)
+	if err != nil {
+		return err
+	}
+
+	// komentar:
+	// decrement TIDAK boleh bikin qty <= 0
+	item, err := s.repo.UpdateQty(ctx, dbgen.UpdateCartItemQtyParams{
+		CartID:    cartID,
+		ProductID: pid,
+		Quantity:  -1,
+	})
+
+	if err == sql.ErrNoRows {
+		return carterrors.ErrCartItemNotFound
+	}
+
+	if item.Quantity <= 0 {
+		return s.repo.DeleteItem(ctx, cartID, pid)
+	}
+
+	return nil
+}
+
+func (s *service) DeleteItem(ctx context.Context, userID, productID string) error {
+	uid, err := s.parseUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	pid, err := s.parseProductID(productID)
+	if err != nil {
+		return err
+	}
+
+	cartID, err := s.getCartOnly(ctx, uid)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.DeleteItem(ctx, cartID, pid)
 }
 
 func (s *service) Delete(ctx context.Context, userID string) error {
-	cartID, err := s.getCart(ctx, userID)
+	uid, err := s.parseUserID(userID)
 	if err != nil {
 		return err
 	}
+
+	cartID, err := s.getCartOnly(ctx, uid)
+	if err != nil {
+		return err
+	}
+
 	return s.repo.Delete(ctx, cartID)
 }
